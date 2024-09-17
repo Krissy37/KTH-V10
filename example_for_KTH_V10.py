@@ -7,8 +7,8 @@ Created on Wed May 17 15:37:25 2023
 # -*- coding: utf-8 -*-
 
 #import sys
+#sys.path.append('C:\\ ... your path ... \\') # adapt this local path!
 
-#sys.path.append('C:\\Users\\Kristin\\Documents\\PhD\\KTH_V10\\') # adapt this local path!
 import kth_model_for_mercury_v10b as kth
 control_param_path = 'control_params_v10.json'
 fit_param_path = 'kth_own_cf_fit_parameters_v10.dat'
@@ -23,9 +23,11 @@ import numpy as np
 # Otherwise the output will be 'nan'. 
 #
 # If you want to change the magnetopause distance, this must be translated in a change in r_hel. 
-# Only change the parameters in the function call. Don't change the parameter files. 
+# Only change the parameters in the function call. Don't change the parameter files.
+# There is an extra routine to calculate the subsolar standoff distance R_SS of the magnetopause (
+# kth.calc_R_SS_km). Example in line 81.  
 #
-# There will be updates of parameters and modules. Status as of 17.05.2023. 
+# There will be updates of parameters and modules. Status as of 17th September 2024. 
 #
 # If you have any questions, do not hesitate to cantact me (Kristin Pump, email: k.pump@tu-bs.de)
 # =============================================================================
@@ -34,13 +36,13 @@ import numpy as np
 # radius of Mercury in km 
 R_M = 2440
 
-#define coordinates in mso
-x_mso = np.linspace(1.0, 4.0, 20)*R_M
+#define coordinates in mso in km
+x_mso = np.linspace(1.0, -4.0, 5)*R_M
 y_mso = np.zeros(len(x_mso))
-z_mso = np.linspace(0.2, 1, 20)*R_M
+z_mso = np.linspace(1.2, 1, 5)*R_M
 
-imf_bx = imf_by = imf_bz = 0   #not ready to use yet. Set it to 0. 
-aberration = 0   #aberration angle in degrees (angle should be negative)
+imf_bx = imf_by = imf_bz = 0     #not ready to use yet. Set it to 0. 
+aberration = 0                   #aberration angle in degrees (average ~ 7° )
 
 #define heliocentric distance and disturbance index per data point
 r_hel = np.ones(len(x_mso))* 0.38
@@ -69,16 +71,54 @@ print('Bx KTH in nT:', Bx_KTH)
 print('By KTH in nT:', By_KTH)
 print('Bz KTH in nT:', Bz_KTH)
 
+
+# =============================================================================
+# calc_R_SS_km is a new function in Version 10. This function 
+# calculates the subsolar standoff distance for a given set of r_hel and di 
+# (and the control parameter file as in KTH) in kilometers. 
+# =============================================================================
+
+R_SS = kth.calc_R_SS_km(r_hel, di, control_param_path)
+print('\n')
+print('new function in Version 10:')
+print('R SS: ', R_SS)
+
+
+# =============================================================================
+# aberration estimator
+# estimator for aberration angle for different heliocentric distances and
+# different solar wind velocities. Default velocity is 400 km/s. 
+# =============================================================================
+
+print('\n')
+r_hel = 0.37    #AU
+v_sw = 400      #km/s
+
+estimated_aberration = kth.estimate_aberration_angle(r_hel, v_sw )
+print('estimated aberration angle: ', estimated_aberration, '°')
+
+
 # =============================================================================
 # if the model works correctly it should print: 
-    
-# x (in MSO in km):  [-2440. -3050. -3660. -4270. -4880.]
-# y (in MSO in km):  [-1952. -2074. -2196. -2318. -2440.]
-# z (in MSO in km):  [-488. -244.    0.  244.  488.]
+#    
+#x (in MSO in km):  [ 2440.  -610. -3660. -6710. -9760.]
+#y (in MSO in km):  [0. 0. 0. 0. 0.]
+#z (in MSO in km):  [2928. 2806. 2684. 2562. 2440.]
+#
+#
+#Bx KTH in nT: [-59.18937442 173.20287364  75.10562428  48.35518278  42.54176103]
+#By KTH in nT: [ 0.00000000e+00 -1.81480346e-14 -6.11403696e-15 -8.91102109e-16 -2.14163130e-16]
+#Bz KTH in nT: [  33.00925789 -342.71088344    8.01092884   11.05015624   25.81157564]
 
 
-# Bx KTH in nT: [-65.41848183 -35.51500702 -19.27779438  -8.87159252   0.56248625]
-# By KTH in nT: [-44.9178099  -18.18511262  -6.56756208  -1.79356723   0.14939532]
-# Bz KTH in nT: [70.75145241 50.91643894 31.11972314 17.86344264 11.98107602]
+#new function in Version 10:
+#R SS:  [3456.89781682 3456.89781682 3456.89781682 3456.89781682 3456.89781682]
+
+
+#estimated aberration angle:  7.130861692415381
+
 # =============================================================================
+
+
+
 

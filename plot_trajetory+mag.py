@@ -29,18 +29,18 @@ R_M = 2440 #in km, Mercury Radius
 # =============================================================================
 # load data
 # =============================================================================
+
+#change this input depending on the data you have
+#####################################################################
 orbit_number = 3611
 orbit_number_str = str(int(orbit_number))
 
 print('load dataframe')
-
 directory = ('C:\\Users\\Kristin\\Documents\\PhD\\KTH_V10\\')
-
 df = pd.read_csv(directory + 'df_res_KTH_V10b_old_RSS_July2024.csv')
-#print(df.keys())
 orbit_number_df = df['orbit_number']
 filtered_indices = np.where(orbit_number_df == orbit_number)
-
+###################################################################
 
 x_mso_km = df['orbit_pos_x'].to_numpy()[filtered_indices]
 y_mso_km = df['orbit_pos_y'].to_numpy()[filtered_indices]
@@ -63,11 +63,11 @@ bz_KTH_nT = np.zeros(len(x_mso_km)) * np.nan
 # =============================================================================
 #  calculate B from KTH22 model 
 # =============================================================================
-
-#call KTH 
+ 
 bx_imf = by_imf = bz_imf = 0
 aberration = 0
 
+#call KTH
 b_KTH_nT = kth.kth_model_for_mercury_v10(x_mso_km, y_mso_km, z_mso_km, r_hel_AU, di, aberration, control_param_path, fit_param_path,bx_imf, by_imf, bz_imf, True, True, True, True, True )
 
 bx_KTH_nT = b_KTH_nT[0]
@@ -162,9 +162,7 @@ indices_z = np.where(z_mso_km >= -(479/2440))
 r = np.sqrt(x_mso_km**2 + y_mso_km**2 + z_mso_km**2)
 r_R_M = r/R_M
 
-
-
-title = r'Orbit ' + orbit_number_str + ', DI = ' + str(int(np.unique(di)[0])) + ', r$_{hel}$ = ' + str(np.round(np.unique(r_hel_AU)[0],2)) + ' , 1-min-data,  new aberration = ' + str(aberration)
+title = r'Orbit ' + orbit_number_str + ', DI = ' + str(int(np.unique(di)[0])) + ', r$_{hel}$ = ' + str(np.round(np.unique(r_hel_AU)[0],2)) + ' , 1-min-data, aberration = ' + str(aberration)
 title2 =   r'ca: ' + str(np.round(np.amin(r_R_M),2)) + ' R$_M$, $\Delta$B (mean) = ' + str(delta_B_mean) + ' nT, $\Delta$B (median) = ' + str(delta_B_median)
 #title2 = ''
 str_date_YMD = str(dates_mes[0])[0:10]     
@@ -186,8 +184,8 @@ plt.ylim((-lim,lim))
 plt.plot(x_mso_km/R_M, z_mso_km/R_M, color = '0.1')
 ax.add_artist(m_day1)   
 ax.add_artist(m_night1)                                                              # creats grey circle (mercury)     
-plt.xlabel(r'$X_{MSM}$' +' in '+'$R_M$')
-plt.ylabel(r'$Z_{MSM}$' +' in '+'$R_M$')
+plt.xlabel(r'$X_{MSM, AB}$' +' in '+'$R_M$')
+plt.ylabel(r'$Z_{MSM, AB}$' +' in '+'$R_M$')
 plt.grid()
 
 #x-y
@@ -198,8 +196,8 @@ ax.add_artist(m_night2)
 ax.axis('square')
 plt.xlim((lim,-lim))
 plt.ylim((-lim,lim))
-plt.xlabel(r'$X_{MSM}$' +' in '+'$R_M$')
-plt.ylabel(r'$Y_{MSM}$' +' in '+'$R_M$')
+plt.xlabel(r'$X_{MSM, AB}$' +' in '+'$R_M$')
+plt.ylabel(r'$Y_{MSM, AB}$' +' in '+'$R_M$')
 plt.grid()
 
 #y-z
@@ -210,15 +208,15 @@ ax.axis('square')
 plt.xlim((lim,-lim))
 plt.ylim((-lim,lim))
 plt.grid()
-plt.xlabel(r'$Y_{MSM}$' +' in '+'$R_M$')
-plt.ylabel(r'$Z_{MSM}$' +' in '+'$R_M$')
+plt.xlabel(r'$Y_{MSM, AB}$' +' in '+'$R_M$')
+plt.ylabel(r'$Z_{MSM, AB}$' +' in '+'$R_M$')
 
 #Bx
 ax = plt.subplot(4, 1, 2)
 formatter = mdates.DateFormatter("%H:%M")
 ax.xaxis.set_major_formatter(formatter)
 plt.plot(dates_mes, bx_mes_nT, label = 'MESSENGER Data')
-plt.plot(dates_mes, bx_KTH_nT, label = 'KTH Model Version 8')
+plt.plot(dates_mes, bx_KTH_nT, label = 'KTH Model Version 10b')
 plt.legend()
 plt.grid()
 
@@ -242,6 +240,7 @@ plt.ylabel('Bz in nT')
 plt.xlabel('time in HH:MM on ' + str_date_YMD)
 plt.grid()
 
+plt.tight_layout()
 
 plt.show()
 
