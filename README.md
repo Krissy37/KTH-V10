@@ -26,15 +26,15 @@ Takes into account:
 Required python packages: numpy, scipy
 
 # Input Parameters:
-x_mso: in, required, X-positions (array) in MSO base given in km
-y_mso: in, required, Y-positions (array) in MSO base given in km
-z_mso: in, required, z-positions (array) in MSO base given in km
-r_hel: in, required, heliocentric distance in AU, use values between 0.3 and 0.47  
-DI: in, required, disturbance index (0 < DI < 100), if not known:  50 (mean value) 
-aberration: in, required, in degrees. if not known: 0 
-imf_bx, imf_by, imf_bz: in, 
-modules: dipole (internal and external), neutralsheet (internal and external)
-"external = True" calculates the cf-fields (shielding fields) for each module which is set true
+-x_mso: in, required, X-positions (array) in MSO base given in km
+-y_mso: in, required, Y-positions (array) in MSO base given in km
+-z_mso: in, required, z-positions (array) in MSO base given in km
+-r_hel: in, required, heliocentric distance in AU, use values between 0.3 and 0.47  
+-DI: in, required, disturbance index (0 < DI < 100), if not known:  50 (mean value) 
+-aberration: in, required, in degrees. if not known: 0 
+-imf_bx, imf_by, imf_bz: in, not ready to use yet. Use 0. 
+-modules: dipole (internal and external), neutralsheet (internal and external)
+-"external = True" calculates the cf-fields (shielding fields) for each module which is set true
  
 # Return: 
  Bx, By, Bz in nT for each coordinate given (x_mso, y_mso, z_mso)
