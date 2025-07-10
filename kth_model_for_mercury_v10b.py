@@ -1043,7 +1043,7 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
             #print('k1 is nan')
             break        
         try: 
-            k2 = delta_t * f(x_trace[i] + 0.5 * k1[0], y_trace[i] + 0.5 * k1[1], z_trace[i] + 0.5 + k1[2])
+            k2 = delta_t * f(x_trace[i] + 0.5 * k1[0], y_trace[i] + 0.5 * k1[1], z_trace[i] + 0.5 * k1[2])
         except: 
             #print('k2 is nan')
             break    
@@ -1072,9 +1072,9 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
         #print('k3: ', k3)
         #print('k4: ', k4)        
         
-        x_trace.append(x_trace[i] + (1 / 6) * (k1[0] + 2 * k2[0] + 3 * k3[0] + k4[0]))
-        y_trace.append(y_trace[i] + (1 / 6) * (k1[1] + 2 * k2[1] + 3 * k3[1] + k4[1]))
-        z_trace.append(z_trace[i] + (1 / 6) * (k1[2] + 2 * k2[2] + 3 * k3[2] + k4[2]))
+        x_trace.append(x_trace[i] + (1 / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]))
+        y_trace.append(y_trace[i] + (1 / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]))
+        z_trace.append(z_trace[i] + (1 / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]))
         mag_B_trace.append(mag_B)
         
         if np.isnan(x_trace[-1])== True: 
@@ -1247,7 +1247,7 @@ def calc_L_shell_v10(x_start, y_start, z_start, r_hel, di, aberration, control_p
             break
         
         try: 
-            k2 = delta_t * f(x_trace[i] + 0.5 * k1[0], y_trace[i] + 0.5 * k1[1], z_trace[i] + 0.5 + k1[2])
+            k2 = delta_t * f(x_trace[i] + 0.5 * k1[0], y_trace[i] + 0.5 * k1[1], z_trace[i] + 0.5 * k1[2])
         except: 
             #print('k2 is nan')
             break
@@ -1279,9 +1279,9 @@ def calc_L_shell_v10(x_start, y_start, z_start, r_hel, di, aberration, control_p
         #print('k3: ', k3)
         #print('k4: ', k4)        
         
-        x_trace.append(x_trace[i] + (1 / 6) * (k1[0] + 2 * k2[0] + 3 * k3[0] + k4[0]))
-        y_trace.append(y_trace[i] + (1 / 6) * (k1[1] + 2 * k2[1] + 3 * k3[1] + k4[1]))
-        z_trace.append(z_trace[i] + (1 / 6) * (k1[2] + 2 * k2[2] + 3 * k3[2] + k4[2]))
+        x_trace.append(x_trace[i] + (1 / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]))
+        y_trace.append(y_trace[i] + (1 / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]))
+        z_trace.append(z_trace[i] + (1 / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]))
         mag_B_trace.append(mag_B)
         
         if np.isnan(x_trace[-1])== True: 
