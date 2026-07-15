@@ -917,11 +917,11 @@ def mp_normal_v10(x_msm, y_msm, z_msm, RMP, alpha):
     # first tangential vector: along rotation of gamma (rotation axis: x-axis)
     gamma     = np.arctan2(mp_loc_y, mp_loc_z)
     e_gamma_x = 0.
-    e_gamma_y = np.cos(gamma)
-    e_gamma_z = - np.sin(gamma)
+    e_gamma_y = np.sin(gamma)
+    e_gamma_z = - np.cos(gamma)
     
     # second tangential vector: along the change of epsilon. This does NOT change gamma
-    epsilon     = np.cos(2. * ((r_mp / RMP)**(- 1. / alpha)) - 1.)
+    epsilon     = np.arccos(2. * ((r_mp / RMP)**(- 1. / alpha)) - 1.)
     d_epsilon   = 1e-3
     new_epsilon = epsilon + d_epsilon
     
