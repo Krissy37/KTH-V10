@@ -3,13 +3,14 @@
 Created on Wed May 17 15:37:25 2023
 
 @author: Kristin
+Amended by MB on 8.5.2026 for writing B field and coordinates to file
 """
 # -*- coding: utf-8 -*-
 
 #import sys
 #sys.path.append('C:\\ ... your path ... \\') # adapt this local path!
 
-import kth_model_for_mercury_v10b as kth
+import kth_model_for_mercury_v10b_MBv2 as kth
 control_param_path = 'control_params_v10.json'
 fit_param_path = 'kth_own_cf_fit_parameters_v10.dat'
 import numpy as np
@@ -59,7 +60,8 @@ B_KTH =  kth.kth_model_for_mercury_v10(x_mso, y_mso, z_mso, r_hel, di, aberratio
 Bx_KTH = B_KTH[0]
 By_KTH = B_KTH[1]
 Bz_KTH = B_KTH[2]
-
+B_mag= np.sqrt(Bx_KTH**2 + By_KTH**2 + Bz_KTH**2)
+""" 
 #print input coordinates
 print('x (in MSO in km): ', x_mso)
 print('y (in MSO in km): ', y_mso)
@@ -69,8 +71,9 @@ print('\n')
 #print magnetic field output
 print('Bx KTH in nT:', Bx_KTH)
 print('By KTH in nT:', By_KTH)
-print('Bz KTH in nT:', Bz_KTH)
-
+print('Bz KTH in nT:', Bz_KTH) 
+print('B magnitude KTH in nT:', B_mag)
+"""
 
 # =============================================================================
 # calc_R_SS_km is a new function in Version 10. This function 
@@ -118,7 +121,13 @@ print('estimated aberration angle: ', estimated_aberration, '°')
 #estimated aberration angle:  7.130861692415381
 
 # =============================================================================
-
+res=[x_mso, y_mso, z_mso, B_mag, Bx_KTH, By_KTH, Bz_KTH]
+#Write data to file
+header = 'imf_x={imf_x}, imf_y={imf_y}, imf_z={imf_z}, aberration={aberration}° \n heliocentric distance={r_hel} AU \n ' \
+'disturbance index (0-100)={di} \n Ćolumn headers: x y z |B| Bx By Bz (in MSO in km and nT, respectively)'.format(imf_x=imf_bx, imf_y=imf_by, imf_z=imf_bz, aberration=aberration, r_hel=r_hel, di=di)
+fname1='example_KTHv10_MBv2_B_field_evaluation_.txt'
+np.savetxt(fname1, np.column_stack(res), newline='\n', header=header, comments='# ')
+            
 
 
 
