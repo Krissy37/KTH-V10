@@ -53,12 +53,23 @@
 import numpy as np
 import json
 import scipy.special as special
-from scipy.integrate import simps
+from scipy.integrate import simpson #Edited by MB 15.4.2026, "simps" has been deprecated in scipy
 import mpmath
 import sys 
 import matplotlib.pyplot as plt
 from numba import jit, njit, prange
 
+#Added by MB on 16.4.2026 for cleaning nested arrays, so that plotting will work
+def clean_array(arr):
+    cleaned = []
+    for v in arr:
+        if isinstance(v, np.ndarray):
+            if v.size == 0:
+                continue  # skip empty arrays
+            cleaned.append(v.item())  # extract scalar
+        else:
+            cleaned.append(v)
+    return np.array(cleaned, dtype=float)
 
 
 def kth_model_for_mercury_v10(x_mso, y_mso, z_mso, r_hel, di, aberration, control_param_path, fit_param_path, 
@@ -569,7 +580,7 @@ def a_phi_hankel_v10(H_current, rho_z_in, phi, z, lambda_arr, d_0):
     
     integrand = H_current * special.j1(lambda_arr * rho_z_in) * np.exp( -lambda_arr * np.sqrt(z ** 2 + sheet_thickness ** 2))
   
-    result_a_phi_hankel = simps(integrand, x=lambda_arr)
+    result_a_phi_hankel = simpson(integrand, x=lambda_arr)
     
     return result_a_phi_hankel
 
@@ -794,7 +805,7 @@ def tail_field_ringcurrent_v10(x_msm, y_msm, z_msm, di, control_params):
     result_hankel_trafo = np.zeros(h_steps)
     for i in range(h_steps):
         #special.j1 = Bessel function of the first kind of order 1
-        result_hankel_trafo[i] = simps(special.j1(lambda_out[i] * rho_hankel) * current * rho_hankel,
+        result_hankel_trafo[i] = simpson(special.j1(lambda_out[i] * rho_hankel) * current * rho_hankel,
                                        x=rho_hankel, axis = -1)  
         
     H_current = mu_0 / 2.0 * result_hankel_trafo
@@ -813,6 +824,10 @@ def tail_field_ringcurrent_v10(x_msm, y_msm, z_msm, di, control_params):
         a_phi = a_phi_hankel_v10(H_current, rho[i], phi[i], z_msm[i], lambda_out, d_0)
 
         # numerically approximate the derivatives
+        #MB:Numerical integration probably used to ensure nuerical stability, 
+        # as the analytical derivatives of the Hankel transform might be difficult to calculate and could lead to numerical issues. 
+        #And with a numerical implementation the kernal could be changed without having to change the analytical derivatives.
+
         delta_z = 10 ** (-5)
 
         d_a_phi_d_z = (a_phi_hankel_v10(H_current, rho[i], phi[i], z_msm[i] + delta_z, lambda_out, d_0) - a_phi_hankel_v10(H_current, rho[i],
@@ -828,15 +843,17 @@ def tail_field_ringcurrent_v10(x_msm, y_msm, z_msm, di, control_params):
             H_current, rho[i] - delta_rho, phi[i],
             z_msm[i], lambda_out, d_0)) / (2 * delta_rho)
 
-
+        #MB: Calculating curl in cylindrical coordinates.
         b_rc_rho[i] =  (- d_a_phi_d_z)
         
         
         
-
+        #MB: Here there seems to be singularity control, so that a_phi/rho does not blow up near
+        #the axis of symmetry
         if rho[i] <= 10 ** (-4):
             b_rc_z[i] =  (1.0 + d_a_phi_d_rho)
 
+        #MB: Calculating curl in cylindrical coordinates.
         else:
             b_rc_z[i] =  (a_phi / rho[i] + d_a_phi_d_rho)
 
@@ -917,11 +934,11 @@ def mp_normal_v10(x_msm, y_msm, z_msm, RMP, alpha):
     # first tangential vector: along rotation of gamma (rotation axis: x-axis)
     gamma     = np.arctan2(mp_loc_y, mp_loc_z)
     e_gamma_x = 0.
-    e_gamma_y = np.sin(gamma)
-    e_gamma_z = - np.cos(gamma)
+    e_gamma_y = np.cos(gamma)
+    e_gamma_z = - np.sin(gamma)
     
     # second tangential vector: along the change of epsilon. This does NOT change gamma
-    epsilon     = np.arccos(2. * ((r_mp / RMP)**(- 1. / alpha)) - 1.)
+    epsilon     = np.cos(2. * ((r_mp / RMP)**(- 1. / alpha)) - 1.)
     d_epsilon   = 1e-3
     new_epsilon = epsilon + d_epsilon
     
@@ -979,6 +996,17 @@ def trace_field_line_single_v10():
     ax1.grid()
     ax1.invert_xaxis()
     
+# Proposed fix for trace_fieldline_v10:
+# - Keep magnetic arrays empty before the while loop.
+# - In each iteration, append B at the current point once, then compute the next coordinates.
+# - After the loop, compare len(x_trace) with len(Bx) and append the final B value if the coordinate
+#   arrays are longer.
+# - This avoids the off-by-one mismatch where x_trace grows one step ahead of Bx.
+#
+# The mismatch occurs because x/y/z are appended after the RK step while B values are appended for
+# the current point. If the loop exits right after appending the last coordinate, the B arrays can be
+# one element shorter than the coordinate arrays.
+
 def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, control_param_path, fit_param_path, delta_t_in = 0.9, imf_bx = 0, imf_by = 0, imf_bz = 0):
     #for opposite direction choose delta_t = -0.9 (or smaller/higher)
     
@@ -991,25 +1019,32 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
     if delta_t_in > 0: 
         sign = 1
     if delta_t_in < 0: 
-        sign = -1
+        sign = -1 
 
     if r < 1:
         print('Radius of start point is smaller than 1. You start inside the planet! Radius = ', r)
-        sys.exit()
+        #sys.exit()
+        #Return an array of nans instead of exiting. This way it is easier to use a Cartesian grid of
+        # #starting points for field line tracing, where some points are inside the planet. MB 29.4.2026
+        return np.array([np.nan, np.nan, np.nan, np.nan])
 
 
     def f(x, y, z):
         return kth_model_for_mercury_v10(x, y, z, r_hel, di, aberration, control_param_path, fit_param_path, imf_bx, imf_by, imf_bz, True, True, True, True, True)
 
-    x_trace = [x_start]
-    y_trace = [y_start]
-    z_trace = [z_start]
-    mag_B_start = f(x_start, y_start, z_start)
-    mag_B_value = np.sqrt(mag_B_start[0]**2 + mag_B_start[1]**2 + mag_B_start[2]**2)
-    mag_B_trace = [mag_B_value]
+    x_trace = [np.asarray(x_start).reshape(())]
+    y_trace = [np.asarray(y_start).reshape(())]
+    z_trace = [np.asarray(z_start).reshape(())]
+   
+    mag_B_trace = []
     
+    #Save values of the magnetic field along the field line trace for later use. This is important for example for the calculation of the plasma transport along the field lines. MB 15.4.2026
+    Bx=[]
+    By=[]
+    Bz=[]
 
     i = 0   
+
 
     while r > 1 and i < 1000:
         
@@ -1021,9 +1056,13 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
             print('r < 1RM')
             break         
         
-        B = f(x_trace[i], y_trace[i], z_trace[i])        
-        mag_B = float(np.sqrt(B[0]**2 + B[1]**2 + B[2]**2))
-        
+        B = f(x_trace[i], y_trace[i], z_trace[i]) 
+
+        #Numpy does not directly convert an array to scalar, so picking the first array value below
+        # gives the scalar as a result      
+        #mag_B = float(np.sqrt(B[0]**2 + B[1]**2 + B[2]**2)) added by MB on 15.4.2026
+        mag_B = np.sqrt(B[0]**2 + B[1]**2 + B[2]**2)[0]
+
         if r > 1.5:   #far away from Mercury             
             delta_t = 150/mag_B            
             if delta_t < 0.3: 
@@ -1038,6 +1077,12 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
             break          
         if np.isnan(x_trace[i])== True: 
             break        
+
+        Bx.append(B[0])
+        By.append(B[1])
+        Bz.append(B[2])
+        mag_B_trace.append(mag_B)
+
         k1 = delta_t * B        
         if np.isnan(k1[0])== True: 
             #print('k1 is nan')
@@ -1072,35 +1117,67 @@ def trace_fieldline_v10(x_start, y_start, z_start, r_hel, di, aberration, contro
         #print('k3: ', k3)
         #print('k4: ', k4)        
         
-        x_trace.append(x_trace[i] + (1 / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]))
-        y_trace.append(y_trace[i] + (1 / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]))
-        z_trace.append(z_trace[i] + (1 / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]))
-        mag_B_trace.append(mag_B)
-        
+        x_new = np.asarray(x_trace[i]).reshape(()) + (1 / 6) * np.asarray(k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]).reshape(())
+        y_new = np.asarray(y_trace[i]).reshape(()) + (1 / 6) * np.asarray(k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]).reshape(())
+        z_new = np.asarray(z_trace[i]).reshape(()) + (1 / 6) * np.asarray(k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]).reshape(())
+        x_trace.append(np.asarray(x_new))
+        y_trace.append(np.asarray(y_new))
+        z_trace.append(np.asarray(z_new))
+
         if np.isnan(x_trace[-1])== True: 
             #print('last element is nan')
             break
 
         i = i + 1
 
-        x_array = np.asarray(x_trace, dtype= np.ndarray)
-        y_array = np.asarray(y_trace, dtype= np.ndarray)
-        z_array = np.asarray(z_trace, dtype= np.ndarray)
-        mag_B_list = np.asarray(mag_B_trace, dtype=object)         
-        
         usable_indices = np.loadtxt('usable_indices.txt')
         if len(np.atleast_1d(usable_indices)) == 0: 
             break
         
-        r = np.sqrt(x_trace[-1]**2 + y_trace[-1]**2 + z_trace[-1]**2)
+        r = np.sqrt((x_trace[-1] / R_M)**2 + (y_trace[-1] / R_M)**2 + (z_trace[-1] / R_M)**2)
         
-        if r < 1.00 * R_M: 
+        if r < 1.00: 
             break         
-        if x_array[-1] <= -4 * R_M: #abortion of fieldline calculation if position if further on nithside than -4 RM. Change this value if you want to go further to nightside. 
+        if x_trace[-1] <= -6 * R_M: #abortion of fieldline calculation if position if further on nithside than -4 RM. Change this value if you want to go further to nightside. 
             break  
+    # Ensure final magnetic field arrays match coordinate lengths.
+    # If the loop exited before any magnetic field samples were stored, fill the remaining slots with NaNs.
+    if len(x_trace) > 0:
+        if len(Bx) < len(x_trace):
+            Bx.extend([np.nan] * (len(x_trace) - len(Bx)))
+            By.extend([np.nan] * (len(y_trace) - len(By)))
+            Bz.extend([np.nan] * (len(z_trace) - len(Bz)))
+        if len(mag_B_trace) < len(x_trace):
+            mag_B_trace.extend([np.nan] * (len(x_trace) - len(mag_B_trace)))
+    if len(Bx) > len(x_trace):
+        Bx = Bx[:len(x_trace)]
+        By = By[:len(y_trace)]
+        Bz = Bz[:len(z_trace)]
+    if len(mag_B_trace) > len(x_trace):
+        mag_B_trace = mag_B_trace[:len(x_trace)]
+    
+    #Build final coordinate and magnetic field arrays after the loop so lengths are consistent.
+    x_array = np.asarray(x_trace, dtype=np.float64)
+    y_array = np.asarray(y_trace, dtype=np.float64)
+    z_array = np.asarray(z_trace, dtype=np.float64)
+    mag_B_list = np.asarray(mag_B_trace, dtype=np.float64)
     try: 
-        return x_array, y_array, z_array, mag_B_list
-    except: return np.array([np.nan, np.nan, np.nan, np.nan])
+
+        #Added by MB on 16.4.2026 so that the matplotlib plotting works for the field lines
+        x_array=clean_array(x_array)
+        y_array=clean_array(y_array)
+        z_array=clean_array(z_array)
+        mag_B_list=clean_array(mag_B_list)
+        Bx=clean_array(Bx)
+        By=clean_array(By)
+        Bz=clean_array(Bz)
+
+        #Check that arrays are of the same size
+        if np.shape(x_array)!=np.shape(Bx):
+            print('Error: x_array and Bx have different sizes. x_array size: ', np.shape(x_array), 'Bx size: ', np.shape(Bx))
+
+        return x_array, y_array, z_array, mag_B_list, Bx, By, Bz
+    except: return np.array([np.nan, np.nan, np.nan, np.nan,np.nan,np.nan,np.nan])
 
 
 def calc_R_SS_km(r_hel, di, control_param_path): 
@@ -1219,7 +1296,10 @@ def calc_L_shell_v10(x_start, y_start, z_start, r_hel, di, aberration, control_p
             break         
         
         B = f(x_trace[i], y_trace[i], z_trace[i])   
-        mag_B = float(np.sqrt(B[0]**2 + B[1]**2 + B[2]**2))
+        #Numpy does not directly convert an array to scalar, so picking the first array value below
+        # gives the scalar as a result      
+        #mag_B = float(np.sqrt(B[0]**2 + B[1]**2 + B[2]**2)) added by MB on 15.4.2026
+        mag_B = np.sqrt(B[0]**2 + B[1]**2 + B[2]**2)[0]
         
         if r > 1.5: 
             
